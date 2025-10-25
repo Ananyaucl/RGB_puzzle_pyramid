@@ -1,42 +1,54 @@
-#define outputA 6
-#define outputB 7
-#define btn 8
+#define CLK 6
+#define DT 7
+#define SW 8
 
 int counter = 0;
-int aState;
-int aLastState;
-
+int maxPos = 20;
+int currentStateCLK;
+int lastStateCLK;
 
 void setup() {
-  // put your setup code here, to run once:
-  pinMode(outputA, INPUT);
-  pinMode(outputB, INPUT);
-  pinMode(btn, INPUT_PULLUP);
+  pinMode(CLK, INPUT);
+  pinMode(DT, INPUT);
+  pinMode(SW, INPUT_PULLUP);
   
   Serial.begin(9600);
-  aLastState = digitalRead(outputA);
+  lastStateCLK = digitalRead(CLK);
+  attachInterrupt(digitalPinToInterrupt(CLK), updateEncoder, CHANGE);
 
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  aState = digitalRead(outputA);
-  if(aState != aLastState){
-    if(digitalRead(outputB) != aState){
-      counter ++;
-    }else{
-      counter --;
+  static int lastCounterVal = 0;
+  if(counter != lastCounterVal){
+    // Check for maximum number of rotatory steps per cycle to restart cycle
+    if (abs(counter) == maxPos) {
+    counter = 0;
+    Serial.print("Loop Complete");
     }
-    Serial.print("Position: ");
     Serial.println(counter);
+    lastCounterVal = counter;
   }
-  if (digitalRead(btn) == LOW) {
+  
+  if (digitalRead(SW) == LOW) {
   counter = 0;
+  lastCounterVal = counter;
   return;
   }
-  if (abs(counter) == 40) {
-  counter = 0;
-  }
-  aLastState = aState;
+}
 
+// Read CLK state to update counter using Interrupt
+void updateEncoder(){
+  currentStateCLK = digitalRead(CLK);
+  if(currentStateCLK != lastStateCLK and currentStateCLK == 1){
+    // Encoder in anticlockwise direction
+    if(digitalRead(DT) != currentStateCLK){
+      counter --;
+    }
+    else{
+      // Encoder in clockwise direction
+      counter ++;
+    }
+  }
+  lastStateCLK = currentStateCLK;
 }

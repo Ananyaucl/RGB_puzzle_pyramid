@@ -4,8 +4,8 @@
 
 int counter = 0;
 int maxPos = 20;
-int currentStateCLK;
-int lastStateCLK;
+int currentState;
+int lastState;
 
 void setup() {
   pinMode(CLK, INPUT);
@@ -13,23 +13,19 @@ void setup() {
   pinMode(SW, INPUT_PULLUP);
   
   Serial.begin(9600);
-  lastStateCLK = digitalRead(CLK);
   attachInterrupt(digitalPinToInterrupt(CLK), updateEncoder, CHANGE);
-
 }
 
 void loop() {
   static int lastCounterVal = 0;
   if(counter != lastCounterVal){
-    // Check for maximum number of rotatory steps per cycle to restart cycle
-    if (abs(counter) == maxPos) {
+    if (abs(counter) == maxPos) {           // Check for maximum number of rotatory steps per cycle to restart cycle
     counter = 0;
     Serial.print("Loop Complete");
     }
     Serial.println(counter);
     lastCounterVal = counter;
   }
-  
   if (digitalRead(SW) == LOW) {
   counter = 0;
   lastCounterVal = counter;
@@ -37,18 +33,24 @@ void loop() {
   }
 }
 
-// Read CLK state to update counter using Interrupt
+// Read CLK and DT state to update counter using Interrupt
 void updateEncoder(){
-  currentStateCLK = digitalRead(CLK);
-  if(currentStateCLK != lastStateCLK and currentStateCLK == 1){
-    // Encoder in anticlockwise direction
-    if(digitalRead(DT) != currentStateCLK){
-      counter --;
-    }
-    else{
-      // Encoder in clockwise direction
-      counter ++;
-    }
+  int lastState = 0;
+  int currentState= (digitalRead(CLK) << 1) | digitalRead(DT);      // Left shift the current state of CLK to combine current state of DT 
+  int transition = (lastState << 2) | currentState;                // Combine the Previous and Current state values
+    switch (transition) {                                         // Switch cases with possible clockwise and counter-clockwise states
+    case 0b0001:
+    case 0b0111:
+    case 0b1110:
+    case 0b1000:
+      counter++;
+      break;
+    case 0b0010:
+    case 0b0100:
+    case 0b1101:
+    case 0b1011:
+      counter--;
+      break;
   }
-  lastStateCLK = currentStateCLK;
+  lastState = currentState;
 }

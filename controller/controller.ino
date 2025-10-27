@@ -7,12 +7,14 @@
 volatile int counter = 0;  // Made volatile for ISR access
 int maxPos = 20;
 bool LEDstate = true;
+int num_leds = 72;
 const uint8_t colorTable[4][3] = {
   {255, 255, 255},  // Face 0 - MIX / WHITE
   {255, 0, 0},      // Face 1 - RED
   {0, 255, 0},      // Face 2 - GREEN
   {0, 0, 255}       // Face 3 - BLUE
 };
+static const char* colorNames[4] = {"MIX", "RED", "GREEN", "BLUE"};
 
 
 void setup() {
@@ -25,7 +27,7 @@ void setup() {
   
   Serial.begin(9600);
   
-  determineColor(0);        // Set initial color
+  determineColor(0);        // Set initial MIX colors at startup
 
   attachInterrupt(digitalPinToInterrupt(CLK), updateEncoder, CHANGE);
   attachInterrupt(digitalPinToInterrupt(DT), updateEncoder, CHANGE);
@@ -34,17 +36,25 @@ void setup() {
 void loop() {
   static int lastCounterVal = 0;
   static int lastFaceIndex = 0;  // Initialize to 0 since we start there
+  static unsigned long lastMixUpdate = 0;
+
+  // Handle negative counter values
+  int normalizedCounter = counter;
+  if (counter < 0) {
+    // Map negative values to corresponding positive counter values
+    normalizedCounter = (counter % maxPos + maxPos) % maxPos;
+  }
+  
+  int faceIndex = (normalizedCounter / 5) % 4; // 0–3 
+
+  // Periodic MIX color refresh when at face 0
+  if (faceIndex == 0 && (millis() - lastMixUpdate >= 200)) {
+    determineColor(0); // refresh random colors periodically
+    lastMixUpdate = millis();
+    Serial.println(lastMixUpdate);
+  }
 
   if(counter != lastCounterVal){
-    // Handle negative counter values
-    int normalizedCounter = counter;
-    if (counter < 0) {
-      // Map negative values to corresponding positive counter values
-      normalizedCounter = (counter % maxPos + maxPos) % maxPos;
-    }
-    
-    int faceIndex = (normalizedCounter / 5) % 4; // 0–3 faces
-    
     // LED control based on faceIndex
     if (LEDstate) {
       if (faceIndex == 0) {
@@ -72,18 +82,36 @@ void loop() {
 void determineColor(int faceIndex){
   faceIndex = faceIndex % 4;
   
-  // Extract color directly from lookup table
-  uint8_t r = colorTable[faceIndex][0];
-  uint8_t g = colorTable[faceIndex][1];
-  uint8_t b = colorTable[faceIndex][2];
-
-  // Serial feedback (for debugging)
-  static const char* colorNames[4] = {"MIX", "RED", "GREEN", "BLUE"};
-  Serial.print("Counter: ");
-  Serial.print(counter);
-  Serial.print(" | Color: ");
+  Serial.print("Face: ");
   Serial.println(colorNames[faceIndex]);
 
+  if(faceIndex == 0){
+    // MIX mode - send random RGB values to each LED
+    for(int n=0; n < num_leds; n++){
+      uint8_t r = random(0,256);
+      uint8_t g = random(0,256);
+      uint8_t b = random(0,256);
+      send_RGB_to_pixel(r,g,b,n);
+    }
+  }
+  else{
+    uint8_t r = colorTable[faceIndex][0];
+    uint8_t g = colorTable[faceIndex][1];
+    uint8_t b = colorTable[faceIndex][2];
+      
+    for (int n = 0; n < num_leds; n++) {
+      send_RGB_to_pixel(r, g, b, n);
+    }
+  }
+}
+
+
+void send_RGB_to_pixel(int r,int g,int b,int pixel){
+  // Serial.println(r);
+  // Serial.println(g);
+  // Serial.println(b); 
+  // Serial.println(pixel); 
+  return;
 }
 
 // Read CLK and DT state to update counter using Interrupt

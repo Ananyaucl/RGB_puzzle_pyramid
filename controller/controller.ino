@@ -43,15 +43,17 @@ void loop() {
   if (counter < 0) {
     // Map negative values to corresponding positive counter values
     normalizedCounter = (counter % maxPos + maxPos) % maxPos;
+    // Serial.println(normalizedCounter);
   }
   
   int faceIndex = (normalizedCounter / 5) % 4; // 0–3 
+  // Serial.println(faceIndex);
 
   // Periodic MIX color refresh when at face 0
   if (faceIndex == 0 && (millis() - lastMixUpdate >= 200)) {
     determineColor(0); // refresh random colors periodically
     lastMixUpdate = millis();
-    Serial.println(lastMixUpdate);
+    // Serial.println(lastMixUpdate);
   }
 
   if(counter != lastCounterVal){
@@ -70,7 +72,7 @@ void loop() {
     }
    
     // Color update only when face changes and at face boundaries
-    if (faceIndex != lastFaceIndex && normalizedCounter % 5 == 0) {
+    if (faceIndex != lastFaceIndex) {
       determineColor(faceIndex);
       lastFaceIndex = faceIndex;
     }

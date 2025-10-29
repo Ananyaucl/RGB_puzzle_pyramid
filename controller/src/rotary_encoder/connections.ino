@@ -1,8 +1,9 @@
 
 // Function to handle incoming MQTT messages
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message received on topic: ");
-  Serial.println(topic);
+  // Serial.print("Message received on topic: ");
+  // Serial.println(topic);
+  return;
 }
 
 
